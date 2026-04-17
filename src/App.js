@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './services/api';
 import CoursList from './components/CoursList';
 import CoursForm from './components/CoursForm';
-
+import axios from 'axios';  // ← AJOUTEZ CETTE LIGNE
 const API_URL = process.env.REACT_APP_API_URL || 'https://shortelement.onrender.com';
 
 function App() {
@@ -30,55 +30,34 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // ========== Récupération automatique du profil ==========
+  // ========== loadProfile avec API centralisée ==========
   const loadProfile = async () => {
     if (!token) return;
     
     try {
-      const response = await axios.get(`${API_URL}/auth/profil`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(response.data.user);
-      localStorage.setItem('userRole', response.data.user.role);
-      console.log('✅ Profil chargé :', response.data.user);
-    } catch (error) {
-      console.error('❌ Erreur chargement profil:', error);
-      if (error.response?.status === 401) {
-        // Token expiré ou invalide
-        console.log('Token invalide, déconnexion...');
-        handleLogout();
-      }
-    }
-  };
-
-  // ========== Récupération du profil avec API (version améliorée) ==========
-  // Cette fonction utilise l'API centralisée (à décommenter si vous avez le fichier api.js)
-  /*
-  const loadProfileWithApi = async () => {
-    if (!token) return;
-    
-    try {
-      const res = await API.get("/auth/profil");
+      const res = await api.get("/auth/profil");
       setUser(res.data.user);
       localStorage.setItem('userRole', res.data.user.role);
-      console.log("✅ Utilisateur :", res.data.user);
+      console.log("✅ Utilisateur chargé :", res.data.user);
     } catch (err) {
-      console.log("❌ Non connecté ou erreur:", err);
+      console.log("❌ Erreur chargement profil:", err);
+      // L'intercepteur api.js gère déjà la déconnexion en cas de 401
+      // On peut juste nettoyer l'état local
       if (err.response?.status === 401) {
-        handleLogout();
+        setToken(null);
+        setUser(null);
       }
     }
   };
-  */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       let response;
       if (isLogin) {
-        response = await axios.post(`${API_URL}/auth/connexion`, { email, password });
+        response = await api.post("/auth/connexion", { email, password });
       } else {
-        response = await axios.post(`${API_URL}/auth/inscription`, { nom, prenom, email, password });
+        response = await api.post("/auth/inscription", { nom, prenom: prenom || '', email, password });
       }
       setToken(response.data.token);
       localStorage.setItem('token', response.data.token);
