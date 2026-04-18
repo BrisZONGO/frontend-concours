@@ -1,5 +1,119 @@
+/* ========== STYLES GÉNÉRAUX ========== */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background: #f5f7fa;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== CONTAINER RESPONSIVE ========== */
+.container {
+  padding: 15px;
+}
+
+/* Tablette et + */
+@media (min-width: 768px) {
+  .container {
+    padding: 20px;
+  }
+}
+
+/* Desktop large (bonus pro) */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px;
+  }
+}
+
+/* ========== CARTE MODERNE ========== */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* ========== BOUTON PREMIUM ========== */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #007bff;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #0056b3;
+}
+
+.btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Bouton danger (déconnexion, suppression) */
+.btn-danger {
+  background: #dc3545;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+/* Bouton warning (modification) */
+.btn-warning {
+  background: #ffc107;
+  color: #333;
+}
+
+.btn-warning:hover {
+  background: #e0a800;
+}
+
+/* ========== INPUT MODERNE ========== */
+.input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  margin-bottom: 10px;
+  font-size: 16px;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* ========== STYLES DE L'APPLICATION ========== */
 .App {
   text-align: center;
+  min-height: 100vh;
+}
+
+/* Animation logo */
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
 }
 
 .App-logo {
@@ -7,12 +121,7 @@
   pointer-events: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
+/* Header principal */
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -20,14 +129,83 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 20px;
   font-size: calc(10px + 2vmin);
   color: white;
 }
 
+/* Liens */
 .App-link {
   color: #61dafb;
 }
 
+/* ========== GRILLE DES COURS ========== */
+.cours-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .cours-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 15px;
+  }
+}
+
+/* ========== FORMULAIRES ========== */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* ========== BARRE DE NAVIGATION ========== */
+.navbar {
+  background: #2c3e50;
+  color: #fff;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ========== ANIMATION ========== */
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
@@ -36,3 +214,86 @@
     transform: rotate(360deg);
   }
 }
+
+/* ========== RESPONSIVE POUR MOBILE ========== */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.3rem;
+  }
+  
+  h3 {
+    font-size: 1.1rem;
+  }
+  
+  button {
+    font-size: 14px;
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important; /* Empêche zoom sur iOS */
+  }
+}
+
+/* Très petits écrans */
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.2rem;
+  }
+  
+  h2 {
+    font-size: 1.1rem;
+  }
+  
+  .card {
+    padding: 12px;
+  }
+  
+  .container {
+    padding: 10px;
+  }
+}
+  
+/* ========== STYLES POUR COURSFORM ========== */
+
+/* Messages d'erreur et de succès */
+.error-message {
+  color: red;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #ffe0e0;
+  border-radius: 5px;
+}
+
+.success-message {
+  color: green;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #e0ffe0;
+  border-radius: 5px;
+}
+
+/* Grille pour les champs sur une ligne */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+/* Responsive pour la grille */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+  
+

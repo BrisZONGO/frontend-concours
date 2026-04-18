@@ -65,44 +65,53 @@ function CoursList({ refreshTrigger }) {
   if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement des cours...</div>;
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="container">
       <h2>📚 Liste des cours</h2>
       
       {/* Barre de recherche */}
-      <div style={{ marginBottom: '30px', display: 'flex', gap: '10px' }}>
+      <div className="card">
         <input
           type="text"
+          className="input"
           placeholder="Rechercher un cours par titre ou description..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-          style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
         />
-        <button onClick={handleSearch} style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '5px' }}>
-          🔍 Rechercher
-        </button>
-        <button onClick={loadCours} style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#6c757d', color: '#fff', border: 'none', borderRadius: '5px' }}>
-          🔄 Tous les cours
-        </button>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <button className="btn" onClick={handleSearch}>
+            🔍 Rechercher
+          </button>
+          <button className="btn" onClick={loadCours} style={{ backgroundColor: '#6c757d' }}>
+            🔄 Tous les cours
+          </button>
+        </div>
       </div>
 
       {/* Grille des cours */}
       {cours.length === 0 ? (
         <p style={{ textAlign: 'center', padding: '50px', color: '#666' }}>📭 Aucun cours disponible pour le moment.</p>
       ) : (
-        <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+        <div className="cours-grid">
           {cours.map(c => (
-            <div key={c._id} style={{ 
-              border: '1px solid #e0e0e0', 
-              borderRadius: '10px', 
-              padding: '15px', 
-              backgroundColor: '#fff',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              transition: 'transform 0.2s',
-              cursor: 'pointer'
-            }}>
+            <div key={c._id} className="card">
+              {/* Image du cours avec lazy loading */}
+              {c.imageUrl && (
+                <img 
+                  src={c.imageUrl} 
+                  alt={c.titre}
+                  loading="lazy"  // ← Chargement différé pour améliorer les performances
+                  className="cours-image"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/300x200?text=Image+non+disponible';
+                  }}
+                />
+              )}
+              
               <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>{c.titre}</h3>
               <p style={{ color: '#666', marginBottom: '10px' }}>{c.description?.substring(0, 100)}...</p>
+              
               <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', fontSize: '14px' }}>
                 <span>⏱️ {c.duree}h</span>
                 <span>💰 {c.prix}€</span>
@@ -113,14 +122,16 @@ function CoursList({ refreshTrigger }) {
               {userRole === 'admin' && (
                 <div style={{ display: 'flex', gap: '10px', marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
                   <button 
+                    className="btn btn-warning"
                     onClick={() => handleEdit(c)}
-                    style={{ flex: 1, padding: '8px', cursor: 'pointer', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '5px' }}
+                    style={{ flex: 1 }}
                   >
                     ✏️ Modifier
                   </button>
                   <button 
+                    className="btn btn-danger"
                     onClick={() => handleDelete(c._id)}
-                    style={{ flex: 1, padding: '8px', cursor: 'pointer', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '5px' }}
+                    style={{ flex: 1 }}
                   >
                     🗑️ Supprimer
                   </button>

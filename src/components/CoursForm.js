@@ -44,40 +44,81 @@ function CoursForm({ token, onCoursCreated }) {
   };
 
   return (
-    <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '10px', marginBottom: '30px' }}>
+    <div className="card">
       <h3>➕ Ajouter un nouveau cours</h3>
-      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-      {success && <div style={{ color: 'green', marginBottom: '10px' }}>{success}</div>}
+      
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
       
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
+        <div className="form-group">
           <label>Titre *</label>
-          <input type="text" name="titre" value={formData.titre} onChange={handleChange} required style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
+          <input
+            type="text"
+            className="input"
+            name="titre"
+            value={formData.titre}
+            onChange={handleChange}
+            required
+          />
         </div>
         
-        <div style={{ marginBottom: '15px' }}>
+        <div className="form-group">
           <label>Description *</label>
-          <textarea name="description" value={formData.description} onChange={handleChange} required rows="3" style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
+          <textarea
+            className="input"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            required
+            rows="3"
+          />
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-          <div>
+        <div className="form-row">
+          <div className="form-group">
             <label>Durée (heures) *</label>
-            <input type="number" name="duree" value={formData.duree} onChange={handleChange} required min="1" style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
+            <input
+              type="number"
+              className="input"
+              name="duree"
+              value={formData.duree}
+              onChange={handleChange}
+              required
+              min="1"
+            />
           </div>
-          <div>
+          
+          <div className="form-group">
             <label>Niveau</label>
-            <select name="niveau" value={formData.niveau} onChange={handleChange} style={{ width: '100%', padding: '8px', marginTop: '5px' }}>
+            <select
+              className="input"
+              name="niveau"
+              value={formData.niveau}
+              onChange={handleChange}
+            >
               {niveaux.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div>
+          
+          <div className="form-group">
             <label>Prix (€)</label>
-            <input type="number" name="prix" value={formData.prix} onChange={handleChange} min="0" style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
+            <input
+              type="number"
+              className="input"
+              name="prix"
+              value={formData.prix}
+              onChange={handleChange}
+              min="0"
+            />
           </div>
         </div>
         
-        <button type="submit" disabled={loading} style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '5px' }}>
+        <button 
+          type="submit" 
+          className="btn"
+          disabled={loading}
+        >
           {loading ? 'Création...' : '➕ Créer le cours'}
         </button>
       </form>

@@ -1,9 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import api from './services/api';
-import CoursList from './components/CoursList';
-import CoursForm from './components/CoursForm';
-import axios from 'axios';  // ← AJOUTEZ CETTE LIGNE
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import axios from 'axios';
+import './App.css';
+
+// Chargement paresseux (lazy loading) des composants lourds
+const CoursList = lazy(() => import('./components/CoursList'));
+const CoursForm = lazy(() => import('./components/CoursForm'));
+
 const API_URL = process.env.REACT_APP_API_URL || 'https://shortelement.onrender.com';
+
+// Composant de chargement (skeleton)
+const LoadingSpinner = () => (
+  <div style={{ 
+    textAlign: 'center', 
+    padding: '50px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '200px'
+  }}>
+    <div className="spinner"></div>
+    <p style={{ marginLeft: '10px' }}>Chargement...</p>
+  </div>
+);
 
 function App() {
   const [message, setMessage] = useState('');
@@ -19,7 +37,7 @@ function App() {
   // ========== useEffect pour charger le profil automatiquement ==========
   useEffect(() => {
     // Test de connexion au backend
-    axios.get(`${API_URL}/health`)
+     axios.get(`${API_URL}/api/health`)
       .then(response => setMessage(response.data.status))
       .catch(error => setMessage('Erreur de connexion au backend'));
     
@@ -30,42 +48,42 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // ========== loadProfile avec API centralisée ==========
-  const loadProfile = async () => {
-    if (!token) return;
-    
-    try {
-      const res = await api.get("/auth/profil");
-      setUser(res.data.user);
-      localStorage.setItem('userRole', res.data.user.role);
-      console.log("✅ Utilisateur chargé :", res.data.user);
-    } catch (err) {
-      console.log("❌ Erreur chargement profil:", err);
-      // L'intercepteur api.js gère déjà la déconnexion en cas de 401
-      // On peut juste nettoyer l'état local
-      if (err.response?.status === 401) {
-        setToken(null);
-        setUser(null);
-      }
+  // ========== loadProfile avec axios (corrigé) ==========
+ // APRÈS (CORRIGÉ)
+const loadProfile = async () => {
+  if (!token) return;
+  try {
+   const res = await axios.get(`${API_URL}/api/auth/profil`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
+ 
+    setUser(res.data.user);
+    localStorage.setItem('userRole', res.data.user.role);
+  } catch (err) {
+    console.log("❌ Erreur chargement profil:", err);
+    if (err.response?.status === 401) {
+      handleLogout();
     }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      let response;
-      if (isLogin) {
-        response = await api.post("/auth/connexion", { email, password });
-      } else {
-        response = await api.post("/auth/inscription", { nom, prenom: prenom || '', email, password });
-      }
-      setToken(response.data.token);
-      localStorage.setItem('token', response.data.token);
-      alert(isLogin ? '✅ Connexion réussie !' : '✅ Inscription réussie !');
-    } catch (error) {
-      alert('❌ Erreur : ' + (error.response?.data?.message || error.message));
+  }
+}; 
+  // ========== handleSubmit avec axios (corrigé) ==========
+// APRÈS (CORRIGÉ)
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    let response;
+    if (isLogin) {
+      response = await axios.post(`${API_URL}/api/auth/connexion`, { email, password });
+    } else {
+      response = await axios.post(`${API_URL}/api/auth/inscription`, { nom, prenom: prenom || '', email, password });
     }
-  };
+    setToken(response.data.token);
+    localStorage.setItem('token', response.data.token);
+    alert(isLogin ? '✅ Connexion réussie !' : '✅ Inscription réussie !');
+  } catch (error) {
+    alert('❌ Erreur : ' + (error.response?.data?.message || error.message));
+  }
+};
 
   const handleLogout = () => {
     setToken(null);
@@ -86,63 +104,98 @@ function App() {
         <h1>📚 Application Concours</h1>
         <p>Statut backend : <strong style={{ color: message === 'healthy' ? 'green' : 'red' }}>{message || 'Chargement...'}</strong></p>
         
-        <div style={{ display: 'inline-block', textAlign: 'left', marginTop: '30px', padding: '30px', border: '1px solid #ddd', borderRadius: '10px', backgroundColor: '#f9f9f9', width: '100%', maxWidth: '400px' }}>
-          <h2>{isLogin ? '🔐 Connexion' : '📝 Inscription'}</h2>
-          <button onClick={() => setIsLogin(!isLogin)} style={{ marginBottom: '20px', cursor: 'pointer', width: '100%', padding: '10px' }}>
-            {isLogin ? 'Créer un compte' : 'Déjà inscrit ? Se connecter'}
-          </button>
-          
-          <form onSubmit={handleSubmit}>
-            {!isLogin && (
-              <>
-                <div style={{ marginBottom: '10px' }}>
-                  <label>Nom: </label>
-                  <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                  <label>Prénom: </label>
-                  <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
-                </div>
-              </>
-            )}
-            <div style={{ marginBottom: '10px' }}>
-              <label>Email: </label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label>Mot de passe: </label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
-            </div>
-            <button type="submit" style={{ width: '100%', padding: '10px', cursor: 'pointer', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '5px' }}>
-              {isLogin ? 'Se connecter' : "S'inscrire"}
+        <div className="container">
+          <div className="card">
+            <h2>{isLogin ? '🔐 Connexion' : '📝 Inscription'}</h2>
+            <button 
+              onClick={() => setIsLogin(!isLogin)} 
+              className="btn"
+              style={{ marginBottom: '20px' }}
+            >
+              {isLogin ? 'Créer un compte' : 'Déjà inscrit ? Se connecter'}
             </button>
-          </form>
+            
+            <form onSubmit={handleSubmit}>
+              {!isLogin && (
+                <>
+                  <div className="form-group">
+                    <label>Nom: </label>
+                    <input 
+                      type="text" 
+                      className="input"
+                      value={nom} 
+                      onChange={(e) => setNom(e.target.value)} 
+                      required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Prénom: </label>
+                    <input 
+                      type="text" 
+                      className="input"
+                      value={prenom} 
+                      onChange={(e) => setPrenom(e.target.value)} 
+                    />
+                  </div>
+                </>
+              )}
+              
+              <div className="form-group">
+                <label>Email: </label>
+                <input 
+                  type="email" 
+                  className="input"
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Mot de passe: </label>
+                <input 
+                  type="password" 
+                  className="input"
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  required 
+                />
+              </div>
+            
+              <button 
+                type="submit" 
+                className="btn"
+              >
+                {isLogin ? 'Se connecter' : "S'inscrire"}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Application connectée
+  // Application connectée avec chargement paresseux
   return (
     <div>
       {/* Barre de navigation */}
-      <div style={{ background: '#2c3e50', color: '#fff', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      <div className="navbar">
         <h1 style={{ margin: 0, fontSize: '1.5rem' }}>📚 Application Concours</h1>
-        <div>
-          <span style={{ marginRight: '15px' }}>👋 {user?.nom} {user?.prenom} ({user?.role})</span>
-          <button onClick={handleLogout} style={{ padding: '5px 15px', cursor: 'pointer', backgroundColor: '#e74c3c', color: '#fff', border: 'none', borderRadius: '5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <span>👋 {user?.nom} {user?.prenom} ({user?.role})</span>
+          <button onClick={handleLogout} className="btn btn-danger" style={{ width: 'auto', padding: '8px 16px' }}>
             Déconnexion
           </button>
         </div>
       </div>
       
-      {/* Formulaire d'ajout de cours */}
-      <div style={{ padding: '20px' }}>
-        <CoursForm token={token} onCoursCreated={handleCoursCreated} />
-      </div>
-      
-      {/* Liste des cours avec refreshTrigger pour rafraîchir */}
-      <CoursList key={refreshCours} refreshTrigger={refreshCours} />
+      {/* Contenu avec lazy loading et Suspense */}
+      <Suspense fallback={<LoadingSpinner />}>
+        <div className="container">
+          <CoursForm token={token} onCoursCreated={handleCoursCreated} />
+        </div>
+        <CoursList key={refreshCours} refreshTrigger={refreshCours} />
+      </Suspense>
     </div>
   );
 }
