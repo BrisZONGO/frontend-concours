@@ -1,0 +1,5 @@
+// Exemple simplifié
+if (req.body.status === "ACCEPTED") {
+  // mettre à jour l’utilisateur en base MongoDB
+  // user.isPremium = true;
+}
