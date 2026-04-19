@@ -1,11 +1,17 @@
 [build]
-  publish = "build"
   command = "npm run build"
+  publish = "build"
 
 [build.environment]
   REACT_APP_API_URL = "https://shortelement.onrender.com"
 
-# Headers pour le cache
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+
 [[headers]]
   for = "/static/*"
   [headers.values]

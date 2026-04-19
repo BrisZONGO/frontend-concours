@@ -8,8 +8,12 @@ function CoursList({ refreshTrigger }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCours, setSelectedCours] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  // Utilisation correcte
+const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
+const [token, setToken] = useState(localStorage.getItem('token'));
+
+// Ajoutez cette ligne pour les utiliser (optionnel)
+console.log('Rôle:', userRole, 'Token présent:', !!token);
 
   useEffect(() => {
     loadCours();

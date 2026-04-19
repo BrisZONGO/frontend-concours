@@ -1,0 +1,1 @@
+localStorage.setItem("role", res.data.user.role);

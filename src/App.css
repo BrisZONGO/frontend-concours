@@ -295,5 +295,64 @@ body {
     gap: 10px;
   }
 }
-  
+ /* ========== STYLES POUR LES IMAGES DES COURS ========== */
+
+.cours-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background-color: #f0f0f0;
+}
+
+/* Animation au chargement de l'image */
+.cours-image {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.cours-image[src] {
+  opacity: 1;
+}
+
+/* Responsive pour les images */
+@media (max-width: 768px) {
+  .cours-image {
+    height: 160px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cours-image {
+    height: 140px;
+  }
+} 
+/* ========== SPINNER POUR LE CHARGEMENT ========== */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Skeleton loading (optionnel) */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
