@@ -1,9 +1,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import axios from 'axios';
 import './App.css';
 import CoursList from './components/CoursList';
-import CoursForm from './components/CoursForm';
 import AdminDashboard from './components/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -37,6 +36,7 @@ function App() {
       });
       setUser(res.data.user);
       localStorage.setItem('userRole', res.data.user.role);
+      console.log('✅ Utilisateur chargé:', res.data.user);
     } catch (err) {
       console.error('Erreur chargement profil:', err);
       if (err.response?.status === 401) {
@@ -87,7 +87,7 @@ function App() {
     localStorage.removeItem('userRole');
   };
 
-  // Rafraîchir la liste des cours après création
+  // Rafraîchir la liste des cours
   const handleCoursCreated = () => {
     setRefreshCours(!refreshCours);
   };
@@ -148,7 +148,7 @@ function App() {
       <div>
         {/* Barre de navigation */}
         <div className="navbar">
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>📚 Application Concours</h1>
+          <h1>📚 Application Concours</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link to="/" style={{ color: '#fff', textDecoration: 'none' }}>Accueil</Link>
             {user?.role === 'admin' && (
@@ -164,15 +164,14 @@ function App() {
         {/* Routes */}
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
+            {/* Route Accueil - Liste des cours uniquement */}
             <Route path="/" element={
-              <>
-                <div className="container">
-                  <CoursForm token={token} onCoursCreated={handleCoursCreated} />
-                </div>
+              <div className="container">
                 <CoursList key={refreshCours} refreshTrigger={refreshCours} />
-              </>
+              </div>
             } />
             
+            {/* Route Admin - Dashboard complet avec création de cours */}
             <Route path="/admin" element={
               <ProtectedRoute adminOnly={true} user={user} token={token}>
                 <AdminDashboard token={token} />
