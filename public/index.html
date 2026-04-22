@@ -23,14 +23,17 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
-    <!-- Optimisation des fonts Google avec preconnect -->
+    <!-- ========== OPTIMISATION DES FONTS ========== -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     
-    <!-- Fallback font system (optimisation) -->
+    <!-- ========== PRÉCHARGEMENT DES RESSOURCES CRITIQUES ========== -->
+    <link rel="preload" href="%PUBLIC_URL%/logo192.png" as="image" />
+    <link rel="preload" href="%PUBLIC_URL%/logo512.png" as="image" />
+    
+    <!-- Fallback font pour éviter le FOUT -->
     <style>
-      /* Fallback font pour éviter le FOUT (Flash of Unstyled Text) */
       body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       }
@@ -47,10 +50,5 @@
       </div>
     </noscript>
     <div id="root"></div>
-    <!--
-      Application de gestion de concours
-      Version: 1.0.0
-      Développée par Bris Delwendé ZONGO
-    -->
   </body>
 </html>

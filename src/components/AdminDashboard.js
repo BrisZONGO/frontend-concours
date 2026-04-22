@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import CoursForm from './CoursForm';
 
@@ -12,17 +12,20 @@ function AdminDashboard({ token }) {
   const [message, setMessage] = useState('');
   const [refreshCours, setRefreshCours] = useState(false);
 
+  // ✅ Mémoriser les headers d'authentification
+  const authHeaders = useMemo(() => ({ 
+    headers: { Authorization: `Bearer ${token}` } 
+  }), [token]);
+
   // Liste des utilisateurs
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/auth/utilisateurs`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`${API_URL}/api/auth/utilisateurs`, authHeaders);
       setUsers(res.data.users || []);
     } catch (error) {
       console.error('Erreur utilisateurs:', error);
     }
-  }, [token]);
+  }, [authHeaders]);
 
   // Liste des cours
   const fetchCours = useCallback(async () => {
@@ -54,9 +57,7 @@ function AdminDashboard({ token }) {
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Supprimer cet utilisateur ?')) {
       try {
-        await axios.delete(`${API_URL}/api/auth/utilisateurs/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.delete(`${API_URL}/api/auth/utilisateurs/${userId}`, authHeaders);
         fetchUsers();
         setMessage('✅ Utilisateur supprimé !');
         setTimeout(() => setMessage(''), 3000);
@@ -71,7 +72,7 @@ function AdminDashboard({ token }) {
     try {
       await axios.put(`${API_URL}/api/auth/utilisateurs/${userId}/role`, 
         { role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
+        authHeaders
       );
       fetchUsers();
       setMessage(`✅ Rôle changé en ${newRole}`);

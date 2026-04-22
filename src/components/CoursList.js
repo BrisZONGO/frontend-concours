@@ -2,19 +2,20 @@ import React, { useState, useEffect } from 'react';
 import coursService from '../services/coursService';
 import CoursEditModal from './CoursEditModal';
 
-function CoursList({ refreshTrigger }) {
+function CoursList({ refreshTrigger, user }) {
   const [cours, setCours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCours, setSelectedCours] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  // Utilisation correcte
-const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
-const [token, setToken] = useState(localStorage.getItem('token'));
 
-// Ajoutez cette ligne pour les utiliser (optionnel)
-console.log('Rôle:', userRole, 'Token présent:', !!token);
+  // ✅ Lecture directe depuis localStorage (pas de state, pas de timing bug)
+  const token = localStorage.getItem('token');
+  const userRole = user?.role || localStorage.getItem('userRole') || 'guest';
 
+  // ======================
+  // 📚 LOAD COURS
+  // ======================
   useEffect(() => {
     loadCours();
   }, [refreshTrigger]);
@@ -25,118 +26,128 @@ console.log('Rôle:', userRole, 'Token présent:', !!token);
       const data = await coursService.getAll();
       setCours(data.cours || []);
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur chargement cours:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  // ======================
+  // 🔍 SEARCH
+  // ======================
   const handleSearch = async () => {
-    if (!searchTerm.trim()) {
-      loadCours();
-      return;
-    }
+    if (!searchTerm.trim()) return loadCours();
+
     try {
       const data = await coursService.search(searchTerm);
       setCours(data.cours || []);
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur recherche:', error);
     }
   };
 
+  // ======================
+  // ✏️ EDIT
+  // ======================
   const handleEdit = (coursItem) => {
     setSelectedCours(coursItem);
     setShowModal(true);
   };
 
+  // ======================
+  // 🗑️ DELETE
+  // ======================
   const handleDelete = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce cours ?')) {
+    if (!token) return alert("⛔ Non autorisé");
+
+    if (window.confirm('Supprimer ce cours ?')) {
       try {
         await coursService.delete(id, token);
         loadCours();
-        alert('✅ Cours supprimé avec succès !');
+        alert('✅ Cours supprimé');
       } catch (error) {
-        console.error('Erreur:', error);
-        alert('❌ Erreur lors de la suppression');
+        console.error(error);
+        alert('❌ Erreur suppression');
       }
     }
   };
 
-  const handleUpdate = () => {
-    loadCours();
-  };
+  const handleUpdate = () => loadCours();
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement des cours...</div>;
+  // ======================
+  // ⏳ LOADING
+  // ======================
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement...</div>;
+  }
 
   return (
     <div className="container">
       <h2>📚 Liste des cours</h2>
-      
-      {/* Barre de recherche */}
+
+      {/* 👤 ROLE */}
+      <p>
+        👤 Rôle :
+        <strong style={{ marginLeft: 5, color: userRole === 'admin' ? 'green' : 'blue' }}>
+          {userRole}
+        </strong>
+      </p>
+
+      {/* 🔍 SEARCH */}
       <div className="card">
         <input
           type="text"
           className="input"
-          placeholder="Rechercher un cours par titre ou description..."
+          placeholder="Rechercher un cours..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
         />
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <button className="btn" onClick={handleSearch}>
-            🔍 Rechercher
-          </button>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+          <button className="btn" onClick={handleSearch}>🔍 Rechercher</button>
           <button className="btn" onClick={loadCours} style={{ backgroundColor: '#6c757d' }}>
-            🔄 Tous les cours
+            🔄 Reset
           </button>
         </div>
       </div>
 
-      {/* Grille des cours */}
+      {/* 📦 LISTE */}
       {cours.length === 0 ? (
-        <p style={{ textAlign: 'center', padding: '50px', color: '#666' }}>📭 Aucun cours disponible pour le moment.</p>
+        <p style={{ textAlign: 'center', padding: '50px' }}>📭 Aucun cours</p>
       ) : (
         <div className="cours-grid">
           {cours.map(c => (
             <div key={c._id} className="card">
-              {/* Image du cours avec lazy loading */}
+
               {c.imageUrl && (
-                <img 
-                  src={c.imageUrl} 
+                <img
+                  src={c.imageUrl}
                   alt={c.titre}
-                  loading="lazy"  // ← Chargement différé pour améliorer les performances
+                  loading="lazy"
                   className="cours-image"
                   onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://via.placeholder.com/300x200?text=Image+non+disponible';
+                    e.target.src = 'https://via.placeholder.com/300x200?text=Image';
                   }}
                 />
               )}
-              
-              <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>{c.titre}</h3>
-              <p style={{ color: '#666', marginBottom: '10px' }}>{c.description?.substring(0, 100)}...</p>
-              
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', fontSize: '14px' }}>
+
+              <h3>{c.titre}</h3>
+              <p>{c.description?.substring(0, 100)}...</p>
+
+              <div style={{ display: 'flex', gap: 15 }}>
                 <span>⏱️ {c.duree}h</span>
                 <span>💰 {c.prix}€</span>
                 <span>📊 {c.niveau}</span>
               </div>
-              
-              {/* Boutons Modifier/Supprimer (visibles uniquement pour les admins) */}
+
+              {/* 👑 ADMIN */}
               {userRole === 'admin' && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                  <button 
-                    className="btn btn-warning"
-                    onClick={() => handleEdit(c)}
-                    style={{ flex: 1 }}
-                  >
+                <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
+                  <button className="btn btn-warning" onClick={() => handleEdit(c)}>
                     ✏️ Modifier
                   </button>
-                  <button 
-                    className="btn btn-danger"
-                    onClick={() => handleDelete(c._id)}
-                    style={{ flex: 1 }}
-                  >
+                  <button className="btn btn-danger" onClick={() => handleDelete(c._id)}>
                     🗑️ Supprimer
                   </button>
                 </div>
@@ -146,7 +157,7 @@ console.log('Rôle:', userRole, 'Token présent:', !!token);
         </div>
       )}
 
-      {/* Modal de modification */}
+      {/* MODAL */}
       {showModal && (
         <CoursEditModal
           cours={selectedCours}
