@@ -1,35 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import axios from 'axios';
+
 import './App.css';
 
-import CoursList from './components/CoursList';
-import AdminDashboard from './components/AdminDashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import CoursDetail from "./components/CoursDetail";
+// 📦 Lazy loading (optimisation)
+const CoursList = lazy(() => import('./components/CoursList'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
+const CoursDetail = lazy(() => import('./components/CoursDetail'));
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shortelement.onrender.com';
 
+// =========================
+// ⏳ Loader global
+// =========================
+const Loader = () => (
+  <div style={{ textAlign: 'center', padding: '50px' }}>
+    ⏳ Chargement...
+  </div>
+);
+
 function App() {
 
-  // ✅ TOUS LES HOOKS EN HAUT
+  // =========================
+  // 🔐 STATES (TOUJOURS EN HAUT)
+  // =========================
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [nom, setNom] = useState('');
-  const [prenom, setPrenom] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
+  // =========================
+  // 🔍 DECODE TOKEN
+  // =========================
+  const decodeToken = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  };
 
   // =========================
-  // LOAD USER
+  // 🔥 LOAD USER
   // =========================
   useEffect(() => {
-
     const loadUser = async () => {
-      const storedToken = localStorage.getItem("token");
+      const storedToken = localStorage.getItem('token');
 
       if (!storedToken) {
         setLoading(false);
@@ -37,14 +62,25 @@ function App() {
       }
 
       try {
+        // 🔍 Décodage rapide
+        const decoded = decodeToken(storedToken);
+        if (decoded?.role) {
+          localStorage.setItem('userRole', decoded.role);
+        }
+
+        // 📡 API profil
         const res = await axios.get(`${API_URL}/api/auth/profil`, {
           headers: { Authorization: `Bearer ${storedToken}` }
         });
 
         setUser(res.data.user);
-        localStorage.setItem("userRole", res.data.user.role);
+
+        if (res.data.user?.role) {
+          localStorage.setItem('userRole', res.data.user.role);
+        }
 
       } catch (err) {
+        console.error("❌ Erreur profil:", err.message);
         handleLogout();
       } finally {
         setLoading(false);
@@ -52,121 +88,112 @@ function App() {
     };
 
     loadUser();
-
   }, []);
 
   // =========================
-  // LOGIN
-  // =========================
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const res = isLogin
-        ? await axios.post(`${API_URL}/api/auth/connexion`, { email, password })
-        : await axios.post(`${API_URL}/api/auth/inscription`, { nom, prenom, email, password });
-
-      localStorage.setItem("token", res.data.token);
-      window.location.reload();
-
-    } catch (err) {
-      alert("❌ " + (err.response?.data?.message || err.message));
-    }
-  };
-
-  // =========================
-  // LOGOUT
+  // 🔓 LOGOUT
   // =========================
   const handleLogout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("userRole");
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    window.location.reload();
   };
 
-  if (loading) return <p>Chargement...</p>;
+  // =========================
+  // 🎭 ROLE SAFE
+  // =========================
+  const role = (() => {
+    const stored = localStorage.getItem('userRole');
+
+    if (stored) return stored;
+
+    if (user?.role) return user.role;
+
+    if (token) {
+      const decoded = decodeToken(token);
+      return decoded?.role || 'user';
+    }
+
+    return 'guest';
+  })();
 
   // =========================
-  // LOGIN PAGE
+  // ⏳ BLOQUER SI LOADING
+  // =========================
+  if (loading) return <Loader />;
+
+  // =========================
+  // 🔐 PAGE LOGIN SIMPLE
   // =========================
   if (!token) {
     return (
-      <Router>
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-          <h1>📚 Application Concours</h1>
-
-          <div className="container">
-            <div className="card">
-
-              <h2>{isLogin ? 'Connexion' : 'Inscription'}</h2>
-
-              <button onClick={() => setIsLogin(!isLogin)} className="btn">
-                {isLogin ? 'Créer un compte' : 'Se connecter'}
-              </button>
-
-              <form onSubmit={handleSubmit}>
-
-                {!isLogin && (
-                  <>
-                    <input placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required />
-                    <input placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
-                  </>
-                )}
-
-                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                <input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required />
-
-                <button className="btn">
-                  {isLogin ? 'Se connecter' : "S'inscrire"}
-                </button>
-
-              </form>
-            </div>
-          </div>
-        </div>
-      </Router>
+      <div style={{ textAlign: 'center', marginTop: '100px' }}>
+        <h1>📚 Application Concours</h1>
+        <p>Veuillez vous connecter</p>
+      </div>
     );
   }
 
-  const role = user?.role || localStorage.getItem("userRole");
-
   // =========================
-  // APP
+  // 🚀 APP PRINCIPALE
   // =========================
   return (
     <Router>
       <div>
 
+        {/* ================= NAVBAR ================= */}
         <div className="navbar">
           <h1>📚 Concours</h1>
 
-          <div style={{ display: 'flex', gap: '15px' }}>
+          <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
 
-            <Link to="/">Accueil</Link>
+            <Link to="/" style={{ color: '#fff' }}>
+              Accueil
+            </Link>
 
             {role === "admin" && (
-              <Link to="/admin">Admin</Link>
+              <Link to="/admin" style={{ color: '#fff', background: 'green', padding: '5px 10px', borderRadius: '5px' }}>
+                Admin
+              </Link>
             )}
 
-            <span>👋 {user?.nom} ({role})</span>
+            <span>
+              👤 {user?.prenom || user?.nom || 'User'} ({role})
+            </span>
 
-            <button onClick={handleLogout}>Déconnexion</button>
+            <button onClick={handleLogout} className="btn btn-danger">
+              Déconnexion
+            </button>
+
           </div>
         </div>
 
-        <Routes>
+        {/* ================= ROUTES ================= */}
+        <Suspense fallback={<Loader />}>
 
-          <Route path="/" element={<CoursList user={user} />} />
+          <Routes>
 
-          <Route path="/cours/:id" element={<CoursDetail />} />
+            {/* HOME */}
+            <Route path="/" element={<CoursList user={user} />} />
 
-          <Route path="/admin" element={
-            <ProtectedRoute adminOnly={true} user={user}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+            {/* DETAIL COURS */}
+            <Route path="/cours/:id" element={<CoursDetail />} />
 
-        </Routes>
+            {/* ADMIN */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute adminOnly={true} user={user} token={token}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+          </Routes>
+
+        </Suspense>
 
       </div>
     </Router>

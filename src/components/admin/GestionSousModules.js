@@ -191,4 +191,3 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
 };
 
 export default GestionSousModules;
-EOF
