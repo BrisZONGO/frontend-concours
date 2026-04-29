@@ -20,6 +20,10 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
   const [editingPartie, setEditingPartie] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
 
+  const authConfig = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
   useEffect(() => {
     if (moduleId) {
       fetchParties();
@@ -28,10 +32,6 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
       setLoading(false);
     }
   }, [moduleId]);
-
-  const authConfig = {
-    headers: { Authorization: `Bearer ${token}` }
-  };
 
   const fetchParties = async () => {
     try {
@@ -56,19 +56,26 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
     e.preventDefault();
 
     try {
+      const payload = {
+        ...formData,
+        titre: formData.titre.trim(),
+        description: formData.description.trim(),
+        contenu: formData.contenu.trim(),
+        duree: formData.duree.trim(),
+        url: formData.url.trim()
+      };
+
       if (editingPartie) {
         await axios.put(
           `${API_URL}/api/parties/${editingPartie._id}`,
-          { ...formData, titre: formData.titre.trim(), description: formData.description.trim() },
+          payload,
           authConfig
         );
       } else {
         await axios.post(
           `${API_URL}/api/parties`,
           {
-            ...formData,
-            titre: formData.titre.trim(),
-            description: formData.description.trim(),
+            ...payload,
             moduleId
           },
           authConfig
@@ -115,12 +122,24 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
     return <div style={{ marginTop: '20px' }}>Choisis un module pour gérer ses sous-modules.</div>;
   }
 
-  if (loading) return <div>Chargement des sous-modules...</div>;
+  if (loading) {
+    return <div style={{ marginTop: '20px' }}>Chargement des sous-modules...</div>;
+  }
 
   return (
     <div style={{ marginTop: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}
+      >
         <h4>📋 Liste des sous-modules ({parties.length})</h4>
+
         <button
           onClick={() => {
             setEditingPartie(null);
@@ -133,68 +152,90 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            border: '1px solid #ddd',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px'
+          }}
+        >
           <h4>{editingPartie ? '✏️ Modifier' : '➕ Ajouter'} un sous-module</h4>
 
-          <label>Titre *</label>
-          <input
-            value={formData.titre}
-            onChange={(e) => setFormData({ ...formData, titre: e.target.value })}
-            required
-            style={{ width: '100%', marginBottom: '10px', padding: '8px' }}
-          />
-
-          <label>Description</label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            style={{ width: '100%', marginBottom: '10px', padding: '8px', minHeight: '80px' }}
-          />
-
-          <label>Type</label>
-          <select
-            value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            style={{ width: '100%', marginBottom: '10px', padding: '8px' }}
-          >
-            <option value="document">Document</option>
-            <option value="video">Vidéo</option>
-            <option value="qcm">QCM</option>
-            <option value="exercice">Exercice</option>
-            <option value="ressource">Ressource</option>
-          </select>
-
-          <label>Contenu</label>
-          <textarea
-            value={formData.contenu}
-            onChange={(e) => setFormData({ ...formData, contenu: e.target.value })}
-            style={{ width: '100%', marginBottom: '10px', padding: '8px', minHeight: '80px' }}
-          />
-
-          <label>URL</label>
-          <input
-            value={formData.url}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            style={{ width: '100%', marginBottom: '10px', padding: '8px' }}
-            placeholder="https://..."
-          />
-
-          <label>Durée</label>
-          <input
-            value={formData.duree}
-            onChange={(e) => setFormData({ ...formData, duree: e.target.value })}
-            style={{ width: '100%', marginBottom: '10px', padding: '8px' }}
-            placeholder="Ex: 30 min"
-          />
-
-          <label style={{ display: 'block', marginBottom: '15px' }}>
+          <div style={{ marginBottom: '10px' }}>
+            <label>Titre *</label>
             <input
-              type="checkbox"
-              checked={formData.estGratuit}
-              onChange={(e) => setFormData({ ...formData, estGratuit: e.target.checked })}
+              value={formData.titre}
+              onChange={(e) => setFormData({ ...formData, titre: e.target.value })}
+              required
+              style={{ width: '100%', padding: '8px' }}
             />
-            {' '}Accessible sans abonnement
-          </label>
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <label>Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              style={{ width: '100%', padding: '8px', minHeight: '80px' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <label>Type</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              style={{ width: '100%', padding: '8px' }}
+            >
+              <option value="document">Document</option>
+              <option value="video">Vidéo</option>
+              <option value="qcm">QCM</option>
+              <option value="exercice">Exercice</option>
+              <option value="ressource">Ressource</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <label>Contenu</label>
+            <textarea
+              value={formData.contenu}
+              onChange={(e) => setFormData({ ...formData, contenu: e.target.value })}
+              style={{ width: '100%', padding: '8px', minHeight: '80px' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <label>URL</label>
+            <input
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              style={{ width: '100%', padding: '8px' }}
+              placeholder="https://..."
+            />
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <label>Durée</label>
+            <input
+              value={formData.duree}
+              onChange={(e) => setFormData({ ...formData, duree: e.target.value })}
+              style={{ width: '100%', padding: '8px' }}
+              placeholder="Ex: 30 min"
+            />
+          </div>
+
+          <div style={{ marginBottom: '15px' }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={formData.estGratuit}
+                onChange={(e) => setFormData({ ...formData, estGratuit: e.target.checked })}
+              />
+              {' '}Accessible sans abonnement
+            </label>
+          </div>
 
           <button type="submit" style={{ marginRight: '10px' }}>
             💾 Sauvegarder
@@ -209,8 +250,17 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
         <div>📭 Aucun sous-module</div>
       ) : (
         parties.map((p) => (
-          <div key={p._id} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
+          <div
+            key={p._id}
+            style={{
+              borderBottom: '1px solid #ddd',
+              padding: '12px 0'
+            }}
+          >
             <strong>{p.titre}</strong> - {p.type} - {p.duree || '-'}
+            <div style={{ color: '#666', marginTop: '4px' }}>
+              {p.description || 'Sans description'}
+            </div>
             <div style={{ marginTop: '8px' }}>
               <button onClick={() => handleEdit(p)} style={{ marginRight: '8px' }}>
                 ✏️ Modifier
@@ -227,4 +277,3 @@ const GestionSousModules = ({ moduleId, token, onRefresh }) => {
 };
 
 export default GestionSousModules;
-

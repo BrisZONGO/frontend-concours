@@ -7,8 +7,12 @@ function CoursForm({ token, onCoursCreated }) {
     description: '',
     duree: '',
     niveau: 'débutant',
-    prix: ''
+    prix: '',
+    estPremium: false,
+    anneeAcademique: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+    image: ''
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -16,7 +20,11 @@ function CoursForm({ token, onCoursCreated }) {
   const niveaux = ['débutant', 'intermédiaire', 'avancé'];
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -27,14 +35,30 @@ function CoursForm({ token, onCoursCreated }) {
 
     try {
       const coursData = {
-        ...formData,
-        duree: parseInt(formData.duree),
-        prix: parseInt(formData.prix) || 0
+        titre: formData.titre.trim(),
+        description: formData.description.trim(),
+        duree: formData.duree.trim(),
+        niveau: formData.niveau,
+        prix: parseInt(formData.prix, 10) || 0,
+        estPremium: formData.estPremium,
+        anneeAcademique: formData.anneeAcademique.trim(),
+        image: formData.image.trim()
       };
-      
+
       await coursService.create(coursData, token);
+
       setSuccess('✅ Cours créé avec succès !');
-      setFormData({ titre: '', description: '', duree: '', niveau: 'débutant', prix: '' });
+      setFormData({
+        titre: '',
+        description: '',
+        duree: '',
+        niveau: 'débutant',
+        prix: '',
+        estPremium: false,
+        anneeAcademique: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+        image: ''
+      });
+
       if (onCoursCreated) onCoursCreated();
     } catch (err) {
       setError('❌ Erreur : ' + (err.response?.data?.message || err.message));
@@ -46,10 +70,10 @@ function CoursForm({ token, onCoursCreated }) {
   return (
     <div className="card">
       <h3>➕ Ajouter un nouveau cours</h3>
-      
+
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Titre *</label>
@@ -62,7 +86,7 @@ function CoursForm({ token, onCoursCreated }) {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label>Description *</label>
           <textarea
@@ -74,21 +98,21 @@ function CoursForm({ token, onCoursCreated }) {
             rows="3"
           />
         </div>
-        
+
         <div className="form-row">
           <div className="form-group">
-            <label>Durée (heures) *</label>
+            <label>Durée *</label>
             <input
-              type="number"
+              type="text"
               className="input"
               name="duree"
               value={formData.duree}
               onChange={handleChange}
+              placeholder="Ex: 12h"
               required
-              min="1"
             />
           </div>
-          
+
           <div className="form-group">
             <label>Niveau</label>
             <select
@@ -97,12 +121,16 @@ function CoursForm({ token, onCoursCreated }) {
               value={formData.niveau}
               onChange={handleChange}
             >
-              {niveaux.map(n => <option key={n} value={n}>{n}</option>)}
+              {niveaux.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
           </div>
-          
+
           <div className="form-group">
-            <label>Prix (€)</label>
+            <label>Prix</label>
             <input
               type="number"
               className="input"
@@ -113,12 +141,47 @@ function CoursForm({ token, onCoursCreated }) {
             />
           </div>
         </div>
-        
-        <button 
-          type="submit" 
-          className="btn"
-          disabled={loading}
-        >
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Année académique *</label>
+            <input
+              type="text"
+              className="input"
+              name="anneeAcademique"
+              value={formData.anneeAcademique}
+              onChange={handleChange}
+              placeholder="2025-2026"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Image URL</label>
+            <input
+              type="text"
+              className="input"
+              name="image"
+              value={formData.image}
+              onChange={handleChange}
+              placeholder="https://..."
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>
+            <input
+              type="checkbox"
+              name="estPremium"
+              checked={formData.estPremium}
+              onChange={handleChange}
+            />
+            {' '}Cours premium
+          </label>
+        </div>
+
+        <button type="submit" className="btn" disabled={loading}>
           {loading ? 'Création...' : '➕ Créer le cours'}
         </button>
       </form>
