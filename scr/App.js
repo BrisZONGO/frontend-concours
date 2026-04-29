@@ -23,9 +23,8 @@ const Loader = () => (
 );
 
 function App() {
-
   // =========================
-  // 🔐 STATES (TOUJOURS EN HAUT)
+  // 🔐 STATES
   // =========================
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
@@ -41,7 +40,7 @@ function App() {
       const jsonPayload = decodeURIComponent(
         atob(base64)
           .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
           .join('')
       );
       return JSON.parse(jsonPayload);
@@ -63,13 +62,11 @@ function App() {
       }
 
       try {
-        // 🔍 Décodage rapide
         const decoded = decodeToken(storedToken);
         if (decoded?.role) {
           localStorage.setItem('userRole', decoded.role);
         }
 
-        // 📡 API profil
         const res = await axios.get(`${API_URL}/api/auth/profil`, {
           headers: { Authorization: `Bearer ${storedToken}` }
         });
@@ -79,9 +76,8 @@ function App() {
         if (res.data.user?.role) {
           localStorage.setItem('userRole', res.data.user.role);
         }
-
       } catch (err) {
-        console.error("❌ Erreur profil:", err.message);
+        console.error('❌ Erreur profil:', err.message);
         handleLogout();
       } finally {
         setLoading(false);
@@ -102,6 +98,9 @@ function App() {
     window.location.reload();
   };
 
+  // =========================
+  // 🔐 LOGIN SUCCESS
+  // =========================
   const handleLogin = (newToken, newUser) => {
     setToken(newToken);
     setUser(newUser);
@@ -114,7 +113,6 @@ function App() {
     const stored = localStorage.getItem('userRole');
 
     if (stored) return stored;
-
     if (user?.role) return user.role;
 
     if (token) {
@@ -126,17 +124,15 @@ function App() {
   })();
 
   // =========================
-  // ⏳ BLOQUER SI LOADING
+  // ⏳ LOADING
   // =========================
   if (loading) return <Loader />;
 
   // =========================
-  // 🔐 PAGE LOGIN SIMPLE
+  // 🔐 PAGE LOGIN
   // =========================
   if (!token) {
-    return (
-      <Login onLogin={handleLogin} />
-    );
+    return <Login onLogin={handleLogin} />;
   }
 
   // =========================
@@ -145,19 +141,24 @@ function App() {
   return (
     <Router>
       <div>
-
-        {/* ================= NAVBAR ================= */}
         <div className="navbar">
           <h1>📚 Concours</h1>
 
           <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
-
             <Link to="/" style={{ color: '#fff' }}>
               Accueil
             </Link>
 
-            {role === "admin" && (
-              <Link to="/admin" style={{ color: '#fff', background: 'green', padding: '5px 10px', borderRadius: '5px' }}>
+            {role === 'admin' && (
+              <Link
+                to="/admin"
+                style={{
+                  color: '#fff',
+                  background: 'green',
+                  padding: '5px 10px',
+                  borderRadius: '5px'
+                }}
+              >
                 Admin
               </Link>
             )}
@@ -169,22 +170,14 @@ function App() {
             <button onClick={handleLogout} className="btn btn-danger">
               Déconnexion
             </button>
-
           </div>
         </div>
 
-        {/* ================= ROUTES ================= */}
         <Suspense fallback={<Loader />}>
-
           <Routes>
-
-            {/* HOME */}
             <Route path="/" element={<CoursList user={user} />} />
-
-            {/* DETAIL COURS */}
             <Route path="/cours/:id" element={<CoursDetail />} />
 
-            {/* ADMIN */}
             <Route
               path="/admin"
               element={
@@ -193,11 +186,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
           </Routes>
-
         </Suspense>
-
       </div>
     </Router>
   );

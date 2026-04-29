@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shortelement.onrender.com';
 
-const API = axios.create({
-  baseURL: "https://shortelement.onrender.com"
+const api = axios.create({
+  baseURL: API_URL
 });
 // Intercepteur pour ajouter le token
 api.interceptors.request.use(
