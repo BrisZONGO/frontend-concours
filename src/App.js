@@ -5,7 +5,6 @@ import axios from 'axios';
 import './App.css';
 import Login from './components/Login';
 
-// 📦 Lazy loading
 const CoursList = lazy(() => import('./components/CoursList'));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
@@ -163,4 +162,3 @@ function App() {
 }
 
 export default App;
-
