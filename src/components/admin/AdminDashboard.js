@@ -6,47 +6,25 @@ import GestionSousModules from "./GestionSousModules";
 const API_URL = process.env.REACT_APP_API_URL || "https://shortelement.onrender.com";
 
 export default function AdminDashboard() {
-
   const token = localStorage.getItem("token");
 
-  // =========================
-  // 🔥 STATES
-  // =========================
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState(null);
   const [utilisateurs, setUtilisateurs] = useState([]);
   const [cours, setCours] = useState([]);
   const [modules, setModules] = useState([]);
-  const [selectedCoursId, setSelectedCoursId] = useState(null);
+  const [selectedCoursId, setSelectedCoursId] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showCoursForm, setShowCoursForm] = useState(false);
-  const [showModuleForm, setShowModuleForm] = useState(false);
-  const [editingCours, setEditingCours] = useState(null);
 
-  const [coursFormData, setCoursFormData] = useState({
-    titre: "",
-    description: "",
-    prix: 0,
-    estPremium: false,
-    anneeAcademique: "",
-    image: ""
-  });
+  const authConfig = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
 
-  const [moduleFormData, setModuleFormData] = useState({
-    titre: "",
-    description: ""
-  });
-
-  // =========================
-  // 📊 LOAD DATA
-  // =========================
   const loadStats = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/admin/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStats(res.data.stats || res.data);
+      const res = await axios.get(`${API_URL}/api/admin/stats`, authConfig);
+      setStats(res.data.stats || null);
     } catch (error) {
       console.error("Erreur stats:", error);
     }
@@ -54,9 +32,7 @@ export default function AdminDashboard() {
 
   const loadUtilisateurs = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`${API_URL}/api/admin/users`, authConfig);
       setUtilisateurs(res.data.users || []);
     } catch (error) {
       console.error("Erreur utilisateurs:", error);
@@ -73,7 +49,11 @@ export default function AdminDashboard() {
   };
 
   const loadModules = async (coursId) => {
-    if (!coursId) return;
+    if (!coursId) {
+      setModules([]);
+      return;
+    }
+
     try {
       const res = await axios.get(`${API_URL}/api/modules/cours/${coursId}`);
       setModules(res.data.modules || []);
@@ -83,34 +63,21 @@ export default function AdminDashboard() {
     }
   };
 
-  // =========================
-  // 🧠 HOOKS (TOUJOURS AVANT RETURN)
-  // =========================
   useEffect(() => {
     if (!token) return;
 
     const init = async () => {
-      await Promise.all([
-        loadStats(),
-        loadUtilisateurs(),
-        loadCours()
-      ]);
+      await Promise.all([loadStats(), loadUtilisateurs(), loadCours()]);
       setLoading(false);
     };
 
     init();
-
   }, [token]);
 
   useEffect(() => {
-    if (selectedCoursId) {
-      loadModules(selectedCoursId);
-    }
+    loadModules(selectedCoursId);
   }, [selectedCoursId]);
 
-  // =========================
-  // 🔒 PROTECTION (APRÈS HOOKS)
-  // =========================
   if (!token) {
     return <p style={{ textAlign: "center", padding: "50px" }}>⛔ Accès refusé</p>;
   }
@@ -119,26 +86,19 @@ export default function AdminDashboard() {
     return <div style={{ textAlign: "center", padding: "50px" }}>Chargement du dashboard...</div>;
   }
 
-  // =========================
-  // 🎨 UI
-  // =========================
   return (
     <div style={{ padding: "20px", maxWidth: "1400px", margin: "0 auto" }}>
-
       <h1>📊 Tableau de bord Administrateur</h1>
 
-      {/* TABS */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+      <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
         <button onClick={() => setActiveTab("dashboard")}>Dashboard</button>
         <button onClick={() => setActiveTab("utilisateurs")}>Utilisateurs</button>
         <button onClick={() => setActiveTab("cours")}>Cours</button>
         <button onClick={() => setActiveTab("modules")}>Modules</button>
       </div>
 
-      {/* DASHBOARD */}
       {activeTab === "dashboard" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px,1fr))", gap: "20px" }}>
-
           <motion.div animate={{ scale: [0.9, 1] }}>
             👥 {stats?.totalUsers || 0} utilisateurs
           </motion.div>
@@ -148,53 +108,70 @@ export default function AdminDashboard() {
           </motion.div>
 
           <motion.div animate={{ scale: [0.9, 1] }}>
-            📚 {cours.length} cours
+            📚 {stats?.totalCourses || cours.length || 0} cours
           </motion.div>
 
           <motion.div animate={{ scale: [0.9, 1] }}>
             💰 {stats?.revenus || 0} FCFA
           </motion.div>
-
         </div>
       )}
 
-      {/* UTILISATEURS */}
       {activeTab === "utilisateurs" && (
         <div>
-          {utilisateurs.map(u => (
-            <div key={u._id}>
-              {u.nom} - {u.email}
-            </div>
-          ))}
+          {utilisateurs.length === 0 ? (
+            <p>Aucun utilisateur trouvé.</p>
+          ) : (
+            utilisateurs.map((u) => (
+              <div key={u._id} style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                {u.nom} {u.prenom} - {u.email} - {u.role}
+              </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* COURS */}
       {activeTab === "cours" && (
         <div>
-          {cours.map(c => (
-            <div key={c._id}>{c.titre}</div>
-          ))}
+          {cours.length === 0 ? (
+            <p>Aucun cours trouvé.</p>
+          ) : (
+            cours.map((c) => (
+              <div key={c._id} style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                {c.titre}
+              </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* MODULES */}
       {activeTab === "modules" && (
         <div>
-
-          <select onChange={(e) => setSelectedCoursId(e.target.value)}>
+          <select
+            value={selectedCoursId}
+            onChange={(e) => {
+              setSelectedCoursId(e.target.value);
+              setSelectedModuleId(null);
+            }}
+          >
             <option value="">Choisir un cours</option>
-            {cours.map(c => (
-              <option key={c._id} value={c._id}>{c.titre}</option>
+            {cours.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.titre}
+              </option>
             ))}
           </select>
 
-          {modules.map(m => (
-            <div key={m._id}>
-              {m.titre}
-              <button onClick={() => setSelectedModuleId(m._id)}>Gérer</button>
-            </div>
-          ))}
+          <div style={{ marginTop: "20px" }}>
+            {modules.map((m) => (
+              <div key={m._id} style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                {m.titre}
+                <button style={{ marginLeft: "10px" }} onClick={() => setSelectedModuleId(m._id)}>
+                  Gérer
+                </button>
+              </div>
+            ))}
+          </div>
 
           {selectedModuleId && (
             <GestionSousModules
@@ -203,10 +180,8 @@ export default function AdminDashboard() {
               onRefresh={() => loadModules(selectedCoursId)}
             />
           )}
-
         </div>
       )}
-
     </div>
   );
 }
