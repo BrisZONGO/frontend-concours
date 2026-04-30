@@ -1,8 +1,87 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
+import SousModuleEvaluation from "./SousModuleEvaluation";
 
 const API_URL = process.env.REACT_APP_API_URL || "https://shortelement.onrender.com";
+
+const labelByKind = {
+  document: "Document",
+  video: "Vidéo",
+  qcm: "QCM",
+  exercice: "Exercice",
+  reponse: "Réponse",
+  ressource: "Ressource"
+};
+
+const absoluteFileUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_URL}${url}`;
+};
+
+const renderVisibleBlock = (block) => {
+  if (block.kind === "reponse") {
+    return null;
+  }
+
+  const fileUrl = absoluteFileUrl(block.fichierUrl);
+
+  return (
+    <div
+      key={`${block.kind}-${block.ordre}-${block.titre}`}
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: "8px",
+        padding: "14px",
+        marginTop: "12px",
+        background: "#fafafa"
+      }}
+    >
+      <div style={{ marginBottom: "8px" }}>
+        <strong>{labelByKind[block.kind] || block.kind}</strong>
+        {block.titre ? ` : ${block.titre}` : ""}
+      </div>
+
+      {block.texte && (
+        <div style={{ marginBottom: "10px", whiteSpace: "pre-wrap" }}>
+          {block.texte}
+        </div>
+      )}
+
+      {block.kind === "video" && block.url && (
+        <div style={{ marginBottom: "10px" }}>
+          <a href={block.url} target="_blank" rel="noreferrer">
+            ▶️ Ouvrir la vidéo
+          </a>
+        </div>
+      )}
+
+      {block.kind !== "video" && block.url && (
+        <div style={{ marginBottom: "10px" }}>
+          <a href={block.url} target="_blank" rel="noreferrer">
+            🔗 Ouvrir le lien
+          </a>
+        </div>
+      )}
+
+      {fileUrl && (
+        <div style={{ marginBottom: "10px" }}>
+          <a href={fileUrl} target="_blank" rel="noreferrer">
+            📎 Télécharger / ouvrir {block.fichierNom || "le fichier"}
+          </a>
+        </div>
+      )}
+
+      {block.mimeType?.startsWith("video/") && fileUrl && (
+        <video controls style={{ width: "100%", maxWidth: "640px", borderRadius: "6px" }}>
+          <source src={fileUrl} type={block.mimeType} />
+          Votre navigateur ne supporte pas la lecture vidéo.
+        </video>
+      )}
+    </div>
+  );
+};
 
 const CoursDetail = () => {
   const { id } = useParams();
@@ -14,7 +93,6 @@ const CoursDetail = () => {
   const [loading, setLoading] = useState(true);
   const [contentLocked, setContentLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState("");
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     fetchCoursData();
@@ -27,30 +105,18 @@ const CoursDetail = () => {
       setLockMessage("");
 
       const token = localStorage.getItem("token");
+      const authConfig = token
+        ? { headers: { Authorization: `Bearer ${token}` } }
+        : {};
 
       const coursRes = await axios.get(`${API_URL}/api/cours/${id}`);
       const coursData = coursRes.data.cours || coursRes.data;
       setCours(coursData);
 
-      if (token) {
-        try {
-          const profilRes = await axios.get(`${API_URL}/api/auth/profil`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setUser(profilRes.data.user || null);
-        } catch (err) {
-          setUser(null);
-        }
-      }
-
       try {
-        const moduleHeaders = token
-          ? { headers: { Authorization: `Bearer ${token}` } }
-          : {};
-
         const modulesRes = await axios.get(
           `${API_URL}/api/modules/cours/${id}`,
-          moduleHeaders
+          authConfig
         );
 
         const modulesData = modulesRes.data.modules || [];
@@ -60,7 +126,7 @@ const CoursDetail = () => {
           modulesData.map(async (module) => {
             const partiesRes = await axios.get(
               `${API_URL}/api/parties/module/${module._id}`,
-              moduleHeaders
+              authConfig
             );
             return [module._id, partiesRes.data.parties || []];
           })
@@ -199,28 +265,41 @@ const CoursDetail = () => {
                         </p>
 
                         <p style={{ margin: "0 0 8px 0", color: "#666" }}>
-                          Type: {partie.type} | Durée: {partie.duree || "-"}
+                          Durée: {partie.duree || "-"}
                         </p>
 
-                        {partie.contenu && (
-                          <div
-                            style={{
-                              background: "#f8f9fa",
-                              padding: "12px",
-                              borderRadius: "6px",
-                              marginTop: "8px"
-                            }}
-                          >
-                            {partie.contenu}
-                          </div>
-                        )}
+                        {partie.contenus?.length ? (
+                          <>
+                            {partie.contenus
+                              .slice()
+                              .sort((a, b) => (a.ordre || 0) - (b.ordre || 0))
+                              .map(renderVisibleBlock)}
 
-                        {partie.url && (
-                          <div style={{ marginTop: "8px" }}>
-                            <a href={partie.url} target="_blank" rel="noreferrer">
-                              Ouvrir la ressource
-                            </a>
-                          </div>
+                            <SousModuleEvaluation partie={partie} />
+                          </>
+                        ) : (
+                          <>
+                            {partie.contenu && (
+                              <div
+                                style={{
+                                  background: "#f8f9fa",
+                                  padding: "12px",
+                                  borderRadius: "6px",
+                                  marginTop: "8px"
+                                }}
+                              >
+                                {partie.contenu}
+                              </div>
+                            )}
+
+                            {partie.url && (
+                              <div style={{ marginTop: "8px" }}>
+                                <a href={partie.url} target="_blank" rel="noreferrer">
+                                  🔗 Ouvrir la ressource
+                                </a>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     ))
