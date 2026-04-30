@@ -12,6 +12,8 @@ const CoursDetail = () => {
   const [partiesByModule, setPartiesByModule] = useState({});
   const [openModules, setOpenModules] = useState({});
   const [loading, setLoading] = useState(true);
+  const [contentLocked, setContentLocked] = useState(false);
+  const [lockMessage, setLockMessage] = useState("");
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -21,6 +23,8 @@ const CoursDetail = () => {
   const fetchCoursData = async () => {
     try {
       setLoading(true);
+      setContentLocked(false);
+      setLockMessage("");
 
       const token = localStorage.getItem("token");
 
@@ -35,23 +39,47 @@ const CoursDetail = () => {
           });
           setUser(profilRes.data.user || null);
         } catch (err) {
-          console.error("Erreur profil:", err);
           setUser(null);
         }
       }
 
-      const modulesRes = await axios.get(`${API_URL}/api/modules/cours/${id}`);
-      const modulesData = modulesRes.data.modules || [];
-      setModules(modulesData);
+      try {
+        const moduleHeaders = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
 
-      const partiesEntries = await Promise.all(
-        modulesData.map(async (module) => {
-          const partiesRes = await axios.get(`${API_URL}/api/parties/module/${module._id}`);
-          return [module._id, partiesRes.data.parties || []];
-        })
-      );
+        const modulesRes = await axios.get(
+          `${API_URL}/api/modules/cours/${id}`,
+          moduleHeaders
+        );
 
-      setPartiesByModule(Object.fromEntries(partiesEntries));
+        const modulesData = modulesRes.data.modules || [];
+        setModules(modulesData);
+
+        const partiesEntries = await Promise.all(
+          modulesData.map(async (module) => {
+            const partiesRes = await axios.get(
+              `${API_URL}/api/parties/module/${module._id}`,
+              moduleHeaders
+            );
+            return [module._id, partiesRes.data.parties || []];
+          })
+        );
+
+        setPartiesByModule(Object.fromEntries(partiesEntries));
+      } catch (contentError) {
+        if (contentError.response?.status === 403) {
+          setContentLocked(true);
+          setLockMessage(
+            contentError.response?.data?.message ||
+              "Ce contenu est réservé aux abonnés"
+          );
+          setModules([]);
+          setPartiesByModule({});
+        } else {
+          throw contentError;
+        }
+      }
     } catch (err) {
       console.error("❌ Erreur chargement cours:", err);
     } finally {
@@ -66,24 +94,6 @@ const CoursDetail = () => {
     }));
   };
 
-  const hasActiveSubscription = () => {
-    if (!user?.abonnement) return false;
-    if (!user.abonnement.actif) return false;
-
-    if (user.abonnement.expiration) {
-      return new Date(user.abonnement.expiration) > new Date();
-    }
-
-    return true;
-  };
-
-  const canAccessPartie = (partie) => {
-    if (!cours?.estPremium) return true;
-    if (user?.role === "admin") return true;
-    if (hasActiveSubscription()) return true;
-    return partie.estGratuit === true;
-  };
-
   if (loading) {
     return <p style={{ textAlign: "center" }}>⏳ Chargement...</p>;
   }
@@ -91,8 +101,6 @@ const CoursDetail = () => {
   if (!cours) {
     return <p style={{ textAlign: "center" }}>❌ Cours introuvable</p>;
   }
-
-  const premiumLocked = cours.estPremium && !(user?.role === "admin") && !hasActiveSubscription();
 
   return (
     <div style={{ padding: "20px", maxWidth: "1000px", margin: "0 auto" }}>
@@ -106,7 +114,7 @@ const CoursDetail = () => {
         <span>{cours.estPremium ? "💎 Premium" : "🆓 Gratuit"}</span>
       </div>
 
-      {premiumLocked && (
+      {contentLocked && (
         <div
           style={{
             background: "#fff3cd",
@@ -117,7 +125,7 @@ const CoursDetail = () => {
             marginBottom: "20px"
           }}
         >
-          Certaines parties sont réservées aux abonnés. Seules les parties gratuites sont accessibles.
+          🔒 {lockMessage}
         </div>
       )}
 
@@ -125,7 +133,9 @@ const CoursDetail = () => {
 
       <h3>📚 Modules du cours</h3>
 
-      {modules.length === 0 ? (
+      {contentLocked ? (
+        <p>Le contenu de ce cours premium n’est pas accessible avec ce compte.</p>
+      ) : modules.length === 0 ? (
         <p>Aucun module disponible pour ce cours.</p>
       ) : (
         modules.map((module, index) => {
@@ -171,72 +181,49 @@ const CoursDetail = () => {
                   {parties.length === 0 ? (
                     <p>Aucune partie dans ce module.</p>
                   ) : (
-                    parties.map((partie, pIndex) => {
-                      const accessible = canAccessPartie(partie);
+                    parties.map((partie, pIndex) => (
+                      <div
+                        key={partie._id}
+                        style={{
+                          borderTop: "1px solid #eee",
+                          paddingTop: "12px",
+                          marginTop: "12px"
+                        }}
+                      >
+                        <h5 style={{ marginBottom: "6px" }}>
+                          Partie {pIndex + 1}: {partie.titre}
+                        </h5>
 
-                      return (
-                        <div
-                          key={partie._id}
-                          style={{
-                            borderTop: "1px solid #eee",
-                            paddingTop: "12px",
-                            marginTop: "12px",
-                            opacity: accessible ? 1 : 0.7,
-                            background: accessible ? "transparent" : "#f8f9fa"
-                          }}
-                        >
-                          <h5 style={{ marginBottom: "6px" }}>
-                            Partie {pIndex + 1}: {partie.titre}
-                          </h5>
+                        <p style={{ margin: "0 0 8px 0" }}>
+                          {partie.description || "Sans description"}
+                        </p>
 
-                          <p style={{ margin: "0 0 8px 0" }}>
-                            {partie.description || "Sans description"}
-                          </p>
+                        <p style={{ margin: "0 0 8px 0", color: "#666" }}>
+                          Type: {partie.type} | Durée: {partie.duree || "-"}
+                        </p>
 
-                          <p style={{ margin: "0 0 8px 0", color: "#666" }}>
-                            Type: {partie.type} | Durée: {partie.duree || "-"} |{" "}
-                            {partie.estGratuit ? "🆓 Gratuit" : "💎 Premium"}
-                          </p>
+                        {partie.contenu && (
+                          <div
+                            style={{
+                              background: "#f8f9fa",
+                              padding: "12px",
+                              borderRadius: "6px",
+                              marginTop: "8px"
+                            }}
+                          >
+                            {partie.contenu}
+                          </div>
+                        )}
 
-                          {accessible ? (
-                            <>
-                              {partie.contenu && (
-                                <div
-                                  style={{
-                                    background: "#f8f9fa",
-                                    padding: "12px",
-                                    borderRadius: "6px",
-                                    marginTop: "8px"
-                                  }}
-                                >
-                                  {partie.contenu}
-                                </div>
-                              )}
-
-                              {partie.url && (
-                                <div style={{ marginTop: "8px" }}>
-                                  <a href={partie.url} target="_blank" rel="noreferrer">
-                                    Ouvrir la ressource
-                                  </a>
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <div
-                              style={{
-                                marginTop: "10px",
-                                padding: "10px",
-                                borderRadius: "6px",
-                                background: "#ececec",
-                                color: "#555"
-                              }}
-                            >
-                              🔒 Cette partie est réservée aux abonnés.
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
+                        {partie.url && (
+                          <div style={{ marginTop: "8px" }}>
+                            <a href={partie.url} target="_blank" rel="noreferrer">
+                              Ouvrir la ressource
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
               )}
@@ -249,3 +236,4 @@ const CoursDetail = () => {
 };
 
 export default CoursDetail;
+

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import coursService from '../services/coursService';
 import CoursEditModal from './CoursEditModal';
 
@@ -9,13 +10,25 @@ function CoursList({ refreshTrigger, user }) {
   const [selectedCours, setSelectedCours] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  // ✅ Lecture directe depuis localStorage (pas de state, pas de timing bug)
   const token = localStorage.getItem('token');
   const userRole = user?.role || localStorage.getItem('userRole') || 'guest';
 
-  // ======================
-  // 📚 LOAD COURS
-  // ======================
+  const hasActiveSubscription = () => {
+    if (!user?.abonnement?.actif) return false;
+
+    if (user.abonnement.expiration) {
+      return new Date(user.abonnement.expiration) > new Date();
+    }
+
+    return true;
+  };
+
+  const canOpenCourse = (course) => {
+    if (!course.estPremium) return true;
+    if (userRole === 'admin') return true;
+    return hasActiveSubscription();
+  };
+
   useEffect(() => {
     loadCours();
   }, [refreshTrigger]);
@@ -32,9 +45,6 @@ function CoursList({ refreshTrigger, user }) {
     }
   };
 
-  // ======================
-  // 🔍 SEARCH
-  // ======================
   const handleSearch = async () => {
     if (!searchTerm.trim()) return loadCours();
 
@@ -46,19 +56,13 @@ function CoursList({ refreshTrigger, user }) {
     }
   };
 
-  // ======================
-  // ✏️ EDIT
-  // ======================
   const handleEdit = (coursItem) => {
     setSelectedCours(coursItem);
     setShowModal(true);
   };
 
-  // ======================
-  // 🗑️ DELETE
-  // ======================
   const handleDelete = async (id) => {
-    if (!token) return alert("⛔ Non autorisé");
+    if (!token) return alert('⛔ Non autorisé');
 
     if (window.confirm('Supprimer ce cours ?')) {
       try {
@@ -74,9 +78,6 @@ function CoursList({ refreshTrigger, user }) {
 
   const handleUpdate = () => loadCours();
 
-  // ======================
-  // ⏳ LOADING
-  // ======================
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement...</div>;
   }
@@ -85,7 +86,6 @@ function CoursList({ refreshTrigger, user }) {
     <div className="container">
       <h2>📚 Liste des cours</h2>
 
-      {/* 👤 ROLE */}
       <p>
         👤 Rôle :
         <strong style={{ marginLeft: 5, color: userRole === 'admin' ? 'green' : 'blue' }}>
@@ -93,7 +93,6 @@ function CoursList({ refreshTrigger, user }) {
         </strong>
       </p>
 
-      {/* 🔍 SEARCH */}
       <div className="card">
         <input
           type="text"
@@ -112,17 +111,15 @@ function CoursList({ refreshTrigger, user }) {
         </div>
       </div>
 
-      {/* 📦 LISTE */}
       {cours.length === 0 ? (
         <p style={{ textAlign: 'center', padding: '50px' }}>📭 Aucun cours</p>
       ) : (
         <div className="cours-grid">
-          {cours.map(c => (
+          {cours.map((c) => (
             <div key={c._id} className="card">
-
-              {c.imageUrl && (
+              {c.image && (
                 <img
-                  src={c.imageUrl}
+                  src={c.image}
                   alt={c.titre}
                   loading="lazy"
                   className="cours-image"
@@ -135,13 +132,29 @@ function CoursList({ refreshTrigger, user }) {
               <h3>{c.titre}</h3>
               <p>{c.description?.substring(0, 100)}...</p>
 
-              <div style={{ display: 'flex', gap: 15 }}>
-                <span>⏱️ {c.duree}h</span>
-                <span>💰 {c.prix}€</span>
+              <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap' }}>
+                <span>⏱️ {c.duree || '-'}</span>
+                <span>💰 {c.prix || 0} FCFA</span>
                 <span>📊 {c.niveau}</span>
+                <span>{c.estPremium ? '💎 Premium' : '🆓 Gratuit'}</span>
               </div>
 
-              {/* 👑 ADMIN */}
+              <div style={{ marginTop: 15 }}>
+                {canOpenCourse(c) ? (
+                  <Link to={`/cours/${c._id}`} className="btn">
+                    📖 Voir le cours
+                  </Link>
+                ) : (
+                  <button
+                    className="btn"
+                    disabled
+                    style={{ backgroundColor: '#999', cursor: 'not-allowed' }}
+                  >
+                    🔒 Cours premium
+                  </button>
+                )}
+              </div>
+
               {userRole === 'admin' && (
                 <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
                   <button className="btn btn-warning" onClick={() => handleEdit(c)}>
@@ -157,7 +170,6 @@ function CoursList({ refreshTrigger, user }) {
         </div>
       )}
 
-      {/* MODAL */}
       {showModal && (
         <CoursEditModal
           cours={selectedCours}

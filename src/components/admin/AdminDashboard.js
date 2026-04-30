@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [selectedCoursId, setSelectedCoursId] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   const [showCoursForm, setShowCoursForm] = useState(false);
   const [showModuleForm, setShowModuleForm] = useState(false);
@@ -31,6 +32,28 @@ export default function AdminDashboard() {
 
   const authConfig = {
     headers: { Authorization: `Bearer ${token}` }
+  };
+
+  const badgeStyle = (type) => {
+    const map = {
+      admin: { background: "#d4edda", color: "#155724" },
+      user: { background: "#dbeafe", color: "#1d4ed8" },
+      inactive: { background: "#e5e7eb", color: "#374151" }
+    };
+
+    return {
+      display: "inline-block",
+      padding: "4px 10px",
+      borderRadius: "999px",
+      fontSize: "12px",
+      fontWeight: "600",
+      ...map[type]
+    };
+  };
+
+  const showTempMessage = (text) => {
+    setMessage(text);
+    setTimeout(() => setMessage(""), 3000);
   };
 
   const loadStats = async () => {
@@ -94,6 +117,7 @@ export default function AdminDashboard() {
     setShowCoursForm(false);
     await loadCours();
     await loadStats();
+    showTempMessage("✅ Cours créé avec succès");
   };
 
   const handleModuleChange = (e) => {
@@ -120,8 +144,10 @@ export default function AdminDashboard() {
         authConfig
       );
 
+      const coursIdToReload = selectedCoursId || moduleFormData.coursId;
+
       setModuleFormData({
-        coursId: selectedCoursId || "",
+        coursId: coursIdToReload || "",
         titre: "",
         description: "",
         ordre: 0,
@@ -130,14 +156,48 @@ export default function AdminDashboard() {
 
       setShowModuleForm(false);
 
-      const coursIdToReload = selectedCoursId || moduleFormData.coursId;
       if (coursIdToReload) {
         setSelectedCoursId(coursIdToReload);
         await loadModules(coursIdToReload);
       }
+
+      showTempMessage("✅ Module créé avec succès");
     } catch (error) {
       console.error("Erreur création module:", error);
       alert(error.response?.data?.message || "Erreur lors de la création du module");
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/auth/utilisateurs/${userId}/role`,
+        { role: newRole },
+        authConfig
+      );
+
+      await loadUtilisateurs();
+      await loadStats();
+      showTempMessage(`✅ Rôle changé en ${newRole}`);
+    } catch (error) {
+      console.error("Erreur changement rôle:", error);
+      alert(error.response?.data?.message || "Erreur lors du changement de rôle");
+    }
+  };
+
+  const handleToggleActif = async (userId, actifActuel) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/auth/utilisateurs/${userId}/actif`,
+        { actif: !actifActuel },
+        authConfig
+      );
+
+      await loadUtilisateurs();
+      showTempMessage(!actifActuel ? "✅ Utilisateur réactivé" : "✅ Utilisateur désactivé");
+    } catch (error) {
+      console.error("Erreur statut utilisateur:", error);
+      alert(error.response?.data?.message || "Erreur lors du changement de statut");
     }
   };
 
@@ -153,6 +213,21 @@ export default function AdminDashboard() {
     <div style={{ padding: "20px", maxWidth: "1400px", margin: "0 auto" }}>
       <h1>📊 Tableau de bord Administrateur</h1>
 
+      {message && (
+        <div
+          style={{
+            background: "#d4edda",
+            color: "#155724",
+            border: "1px solid #c3e6cb",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "20px"
+          }}
+        >
+          {message}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
         <button onClick={() => setActiveTab("dashboard")}>Dashboard</button>
         <button onClick={() => setActiveTab("utilisateurs")}>Utilisateurs</button>
@@ -162,21 +237,10 @@ export default function AdminDashboard() {
 
       {activeTab === "dashboard" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px,1fr))", gap: "20px" }}>
-          <motion.div animate={{ scale: [0.9, 1] }}>
-            👥 {stats?.totalUsers || 0} utilisateurs
-          </motion.div>
-
-          <motion.div animate={{ scale: [0.9, 1] }}>
-            💎 {stats?.abonnementsActifs || 0} premium
-          </motion.div>
-
-          <motion.div animate={{ scale: [0.9, 1] }}>
-            📚 {stats?.totalCourses || cours.length || 0} cours
-          </motion.div>
-
-          <motion.div animate={{ scale: [0.9, 1] }}>
-            💰 {stats?.revenus || 0} FCFA
-          </motion.div>
+          <motion.div animate={{ scale: [0.9, 1] }}>👥 {stats?.totalUsers || 0} utilisateurs</motion.div>
+          <motion.div animate={{ scale: [0.9, 1] }}>💎 {stats?.abonnementsActifs || 0} premium</motion.div>
+          <motion.div animate={{ scale: [0.9, 1] }}>📚 {stats?.totalCourses || cours.length || 0} cours</motion.div>
+          <motion.div animate={{ scale: [0.9, 1] }}>💰 {stats?.revenus || 0} FCFA</motion.div>
         </div>
       )}
 
@@ -186,8 +250,55 @@ export default function AdminDashboard() {
             <p>Aucun utilisateur trouvé.</p>
           ) : (
             utilisateurs.map((u) => (
-              <div key={u._id} style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                {u.nom} {u.prenom} - {u.email} - {u.role}
+              <div
+                key={u._id}
+                style={{
+                  padding: "14px",
+                  borderBottom: "1px solid #ddd",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "15px",
+                  flexWrap: "wrap"
+                }}
+              >
+                <div>
+                  <strong>{u.nom} {u.prenom}</strong>
+                  <div>{u.email}</div>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "8px", flexWrap: "wrap" }}>
+                    <span style={badgeStyle(u.role === "admin" ? "admin" : "user")}>
+                      {u.role}
+                    </span>
+                    <span style={badgeStyle(u.actif === false ? "inactive" : "admin")}>
+                      {u.actif === false ? "désactivé" : "actif"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                  <select
+                    value={u.role}
+                    onChange={(e) => handleChangeRole(u._id, e.target.value)}
+                    style={{ padding: "8px" }}
+                  >
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                  </select>
+
+                  <button
+                    onClick={() => handleToggleActif(u._id, u.actif)}
+                    style={{
+                      background: u.actif === false ? "#198754" : "#6c757d",
+                      color: "#fff",
+                      border: "none",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {u.actif === false ? "Réactiver" : "Désactiver"}
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -208,15 +319,11 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {cours.length === 0 ? (
-            <p>Aucun cours trouvé.</p>
-          ) : (
-            cours.map((c) => (
-              <div key={c._id} style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                <strong>{c.titre}</strong> - {c.anneeAcademique} - {c.niveau}
-              </div>
-            ))
-          )}
+          {cours.map((c) => (
+            <div key={c._id} style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+              <strong>{c.titre}</strong> - {c.anneeAcademique} - {c.niveau}
+            </div>
+          ))}
         </div>
       )}
 
@@ -257,81 +364,38 @@ export default function AdminDashboard() {
           </div>
 
           {showModuleForm && (
-            <form
-              onSubmit={handleCreateModule}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "20px",
-                marginBottom: "20px"
-              }}
-            >
+            <form onSubmit={handleCreateModule} style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "20px", marginBottom: "20px" }}>
               <h3>Création de module</h3>
 
               <div style={{ marginBottom: "10px" }}>
                 <label>Cours *</label>
-                <select
-                  name="coursId"
-                  value={moduleFormData.coursId}
-                  onChange={handleModuleChange}
-                  required
-                  style={{ width: "100%", padding: "8px" }}
-                >
+                <select name="coursId" value={moduleFormData.coursId} onChange={handleModuleChange} required style={{ width: "100%", padding: "8px" }}>
                   <option value="">Choisir un cours</option>
                   {cours.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.titre}
-                    </option>
+                    <option key={c._id} value={c._id}>{c.titre}</option>
                   ))}
                 </select>
               </div>
 
               <div style={{ marginBottom: "10px" }}>
                 <label>Titre *</label>
-                <input
-                  type="text"
-                  name="titre"
-                  value={moduleFormData.titre}
-                  onChange={handleModuleChange}
-                  required
-                  style={{ width: "100%", padding: "8px" }}
-                />
+                <input type="text" name="titre" value={moduleFormData.titre} onChange={handleModuleChange} required style={{ width: "100%", padding: "8px" }} />
               </div>
 
               <div style={{ marginBottom: "10px" }}>
                 <label>Description</label>
-                <textarea
-                  name="description"
-                  value={moduleFormData.description}
-                  onChange={handleModuleChange}
-                  rows="3"
-                  style={{ width: "100%", padding: "8px" }}
-                />
+                <textarea name="description" value={moduleFormData.description} onChange={handleModuleChange} rows="3" style={{ width: "100%", padding: "8px" }} />
               </div>
 
               <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
                 <div style={{ flex: 1 }}>
                   <label>Ordre</label>
-                  <input
-                    type="number"
-                    name="ordre"
-                    value={moduleFormData.ordre}
-                    onChange={handleModuleChange}
-                    min="0"
-                    style={{ width: "100%", padding: "8px" }}
-                  />
+                  <input type="number" name="ordre" value={moduleFormData.ordre} onChange={handleModuleChange} min="0" style={{ width: "100%", padding: "8px" }} />
                 </div>
 
                 <div style={{ flex: 1 }}>
                   <label>Durée estimée</label>
-                  <input
-                    type="text"
-                    name="dureeEstimee"
-                    value={moduleFormData.dureeEstimee}
-                    onChange={handleModuleChange}
-                    placeholder="Ex: 2h"
-                    style={{ width: "100%", padding: "8px" }}
-                  />
+                  <input type="text" name="dureeEstimee" value={moduleFormData.dureeEstimee} onChange={handleModuleChange} placeholder="Ex: 2h" style={{ width: "100%", padding: "8px" }} />
                 </div>
               </div>
 
@@ -367,5 +431,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-
