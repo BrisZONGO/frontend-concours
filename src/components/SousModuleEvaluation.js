@@ -5,14 +5,21 @@ const API_URL = process.env.REACT_APP_API_URL || "https://shortelement.onrender.
 
 function SousModuleEvaluation({ partie }) {
   const [answers, setAnswers] = useState({});
+  const [filesByIndex, setFilesByIndex] = useState({});
   const [tentatives, setTentatives] = useState([]);
   const [result, setResult] = useState(null);
   const [correction, setCorrection] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingCorrection, setLoadingCorrection] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState(null);
 
   const evaluableContenus = (partie.contenus || []).filter(
-    (contenu) => contenu.kind === "qcm" || contenu.kind === "exercice"
+    (contenu) =>
+      contenu.kind === "qcm" ||
+      contenu.kind === "exercice" ||
+      contenu.kind === "document" ||
+      contenu.kind === "video" ||
+      contenu.kind === "ressource"
   );
 
   useEffect(() => {
@@ -46,11 +53,40 @@ function SousModuleEvaluation({ partie }) {
     }));
   };
 
-  const setExerciceAnswer = (contenuIndex, value) => {
+  const setTextAnswer = (contenuIndex, value) => {
     setAnswers((prev) => ({
       ...prev,
       [contenuIndex]: value
     }));
+  };
+
+  const uploadResponseFile = async (contenuIndex, file) => {
+    if (!file) return;
+
+    try {
+      setUploadingIndex(contenuIndex);
+
+      const token = localStorage.getItem("token");
+      const body = new FormData();
+      body.append("file", file);
+
+      const res = await axios.post(`${API_URL}/api/upload`, body, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      setFilesByIndex((prev) => ({
+        ...prev,
+        [contenuIndex]: res.data.file
+      }));
+    } catch (error) {
+      console.error("Erreur upload réponse:", error);
+      alert(error.response?.data?.message || "Erreur upload fichier réponse");
+    } finally {
+      setUploadingIndex(null);
+    }
   };
 
   const computeResultsPayload = () => {
@@ -69,17 +105,22 @@ function SousModuleEvaluation({ partie }) {
             noteObtenue += points;
           }
         });
-      }
-
-      if (contenu.kind === "exercice") {
+      } else if (contenu.kind === "exercice") {
         noteMax += Number(contenu.pointsMax || 20);
-
         const texte = typeof answers?.[contenuIndex] === "string"
           ? answers[contenuIndex].trim()
           : "";
 
-        if (texte.length > 0) {
+        if (texte.length > 0 || filesByIndex[contenuIndex]) {
           noteObtenue = Number(contenu.pointsMax || 20);
+        }
+      } else {
+        noteMax += Number(contenu.pointsMax || 1);
+        if (
+          (typeof answers?.[contenuIndex] === "string" && answers[contenuIndex].trim()) ||
+          filesByIndex[contenuIndex]
+        ) {
+          noteObtenue = Number(contenu.pointsMax || 1);
         }
       }
 
@@ -89,7 +130,11 @@ function SousModuleEvaluation({ partie }) {
         titre: contenu.titre,
         noteObtenue,
         noteMax,
-        reponseUtilisateur
+        reponseUtilisateur,
+        fichierReponseUrl: filesByIndex[contenuIndex]?.url || "",
+        fichierReponseNom: filesByIndex[contenuIndex]?.nom || "",
+        mimeType: filesByIndex[contenuIndex]?.mimeType || "",
+        extension: filesByIndex[contenuIndex]?.extension || ""
       };
     });
   };
@@ -161,31 +206,16 @@ function SousModuleEvaluation({ partie }) {
   const lastTentative = result || tentatives[tentatives.length - 1];
 
   return (
-    <div
-      style={{
-        marginTop: "16px",
-        border: "1px solid #d1d5db",
-        borderRadius: "8px",
-        padding: "16px",
-        background: "#fcfcfc"
-      }}
-    >
+    <div style={{ marginTop: "16px", border: "1px solid #d1d5db", borderRadius: "8px", padding: "16px", background: "#fcfcfc" }}>
       <h4>📝 Traitement du sous-module</h4>
 
       {evaluableContenus.map((contenu, contenuIndex) => (
-        <div
-          key={`${contenu.kind}-${contenuIndex}`}
-          style={{
-            borderTop: "1px solid #eee",
-            marginTop: "12px",
-            paddingTop: "12px"
-          }}
-        >
+        <div key={`${contenu.kind}-${contenuIndex}`} style={{ borderTop: "1px solid #eee", marginTop: "12px", paddingTop: "12px" }}>
           <strong>
             {contenu.kind.toUpperCase()} : {contenu.titre || `Bloc ${contenuIndex + 1}`}
           </strong>
 
-          {contenu.kind === "qcm" && (
+          {contenu.kind === "qcm" ? (
             <div style={{ marginTop: "10px" }}>
               {(contenu.questions || []).map((question, questionIndex) => (
                 <div key={questionIndex} style={{ marginBottom: "14px" }}>
@@ -213,20 +243,29 @@ function SousModuleEvaluation({ partie }) {
                 </div>
               ))}
             </div>
-          )}
-
-          {contenu.kind === "exercice" && (
+          ) : (
             <div style={{ marginTop: "10px" }}>
               <textarea
                 placeholder="Saisissez votre réponse / traitement ici"
                 value={answers?.[contenuIndex] || ""}
-                onChange={(e) => setExerciceAnswer(contenuIndex, e.target.value)}
-                style={{
-                  width: "100%",
-                  minHeight: "120px",
-                  padding: "10px"
-                }}
+                onChange={(e) => setTextAnswer(contenuIndex, e.target.value)}
+                style={{ width: "100%", minHeight: "120px", padding: "10px", marginBottom: "10px" }}
               />
+
+              <div>
+                <label>Déposer / charger un fichier de réponse</label>
+                <input
+                  type="file"
+                  onChange={(e) => uploadResponseFile(contenuIndex, e.target.files?.[0])}
+                  style={{ display: "block", marginTop: "6px" }}
+                />
+                {uploadingIndex === contenuIndex && <div>Upload en cours...</div>}
+                {filesByIndex[contenuIndex] && (
+                  <div style={{ color: "green", marginTop: "6px" }}>
+                    Fichier chargé : {filesByIndex[contenuIndex].nom}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -239,14 +278,7 @@ function SousModuleEvaluation({ partie }) {
       </div>
 
       {lastTentative && (
-        <div
-          style={{
-            marginTop: "16px",
-            padding: "12px",
-            borderRadius: "8px",
-            background: "#f3f4f6"
-          }}
-        >
+        <div style={{ marginTop: "16px", padding: "12px", borderRadius: "8px", background: "#f3f4f6" }}>
           <p>Tentative : {lastTentative.tentativeNumero || tentatives.length}</p>
           <p>Note totale : {lastTentative.noteTotale} / {lastTentative.noteMaxTotale}</p>
           <p>Pourcentage : {lastTentative.pourcentage}%</p>
@@ -265,14 +297,7 @@ function SousModuleEvaluation({ partie }) {
       )}
 
       {correction && (
-        <div
-          style={{
-            marginTop: "16px",
-            padding: "12px",
-            borderRadius: "8px",
-            background: "#eef6ff"
-          }}
-        >
+        <div style={{ marginTop: "16px", padding: "12px", borderRadius: "8px", background: "#eef6ff" }}>
           <h5>Corrigé du sous-module</h5>
 
           {(correction.corrections || []).map((bloc, blocIndex) => (
@@ -302,3 +327,5 @@ function SousModuleEvaluation({ partie }) {
 }
 
 export default SousModuleEvaluation;
+
+

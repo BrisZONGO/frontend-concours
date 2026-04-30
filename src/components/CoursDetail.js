@@ -20,12 +20,45 @@ const absoluteFileUrl = (url) => {
   return `${API_URL}${url}`;
 };
 
+const renderInlineFile = (block) => {
+  const fileUrl = absoluteFileUrl(block.fichierUrl);
+  if (!fileUrl) return null;
+
+  if (block.mimeType?.startsWith("image/")) {
+    return <img src={fileUrl} alt={block.fichierNom || block.titre || "fichier"} style={{ maxWidth: "100%", borderRadius: "6px", marginTop: "10px" }} />;
+  }
+
+  if (block.mimeType === "application/pdf") {
+    return <iframe src={fileUrl} title={block.fichierNom || block.titre || "pdf"} style={{ width: "100%", height: "500px", border: "1px solid #ddd", borderRadius: "6px", marginTop: "10px" }} />;
+  }
+
+  if (block.mimeType?.startsWith("video/")) {
+    return (
+      <video controls style={{ width: "100%", maxWidth: "700px", marginTop: "10px" }}>
+        <source src={fileUrl} type={block.mimeType} />
+      </video>
+    );
+  }
+
+  if (block.mimeType?.startsWith("audio/")) {
+    return (
+      <audio controls style={{ width: "100%", marginTop: "10px" }}>
+        <source src={fileUrl} type={block.mimeType} />
+      </audio>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: "10px", padding: "10px", background: "#f3f4f6", borderRadius: "6px" }}>
+      📄 Fichier disponible à la consultation : {block.fichierNom || "fichier"}
+    </div>
+  );
+};
+
 const renderVisibleBlock = (block) => {
   if (block.kind === "reponse") {
     return null;
   }
-
-  const fileUrl = absoluteFileUrl(block.fichierUrl);
 
   return (
     <div
@@ -51,34 +84,17 @@ const renderVisibleBlock = (block) => {
 
       {block.kind === "video" && block.url && (
         <div style={{ marginBottom: "10px" }}>
-          <a href={block.url} target="_blank" rel="noreferrer">
-            ▶️ Ouvrir la vidéo
-          </a>
+          <a href={block.url} target="_blank" rel="noreferrer">▶️ Ouvrir la vidéo</a>
         </div>
       )}
 
       {block.kind !== "video" && block.url && (
         <div style={{ marginBottom: "10px" }}>
-          <a href={block.url} target="_blank" rel="noreferrer">
-            🔗 Ouvrir le lien
-          </a>
+          <a href={block.url} target="_blank" rel="noreferrer">🔗 Ouvrir le lien</a>
         </div>
       )}
 
-      {fileUrl && (
-        <div style={{ marginBottom: "10px" }}>
-          <a href={fileUrl} target="_blank" rel="noreferrer">
-            📎 Télécharger / ouvrir {block.fichierNom || "le fichier"}
-          </a>
-        </div>
-      )}
-
-      {block.mimeType?.startsWith("video/") && fileUrl && (
-        <video controls style={{ width: "100%", maxWidth: "640px", borderRadius: "6px" }}>
-          <source src={fileUrl} type={block.mimeType} />
-          Votre navigateur ne supporte pas la lecture vidéo.
-        </video>
-      )}
+      {renderInlineFile(block)}
     </div>
   );
 };
@@ -105,29 +121,20 @@ const CoursDetail = () => {
       setLockMessage("");
 
       const token = localStorage.getItem("token");
-      const authConfig = token
-        ? { headers: { Authorization: `Bearer ${token}` } }
-        : {};
+      const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
       const coursRes = await axios.get(`${API_URL}/api/cours/${id}`);
       const coursData = coursRes.data.cours || coursRes.data;
       setCours(coursData);
 
       try {
-        const modulesRes = await axios.get(
-          `${API_URL}/api/modules/cours/${id}`,
-          authConfig
-        );
-
+        const modulesRes = await axios.get(`${API_URL}/api/modules/cours/${id}`, authConfig);
         const modulesData = modulesRes.data.modules || [];
         setModules(modulesData);
 
         const partiesEntries = await Promise.all(
           modulesData.map(async (module) => {
-            const partiesRes = await axios.get(
-              `${API_URL}/api/parties/module/${module._id}`,
-              authConfig
-            );
+            const partiesRes = await axios.get(`${API_URL}/api/parties/module/${module._id}`, authConfig);
             return [module._id, partiesRes.data.parties || []];
           })
         );
@@ -136,10 +143,7 @@ const CoursDetail = () => {
       } catch (contentError) {
         if (contentError.response?.status === 403) {
           setContentLocked(true);
-          setLockMessage(
-            contentError.response?.data?.message ||
-              "Ce contenu est réservé aux abonnés"
-          );
+          setLockMessage(contentError.response?.data?.message || "Ce contenu est réservé aux abonnés");
           setModules([]);
           setPartiesByModule({});
         } else {
@@ -181,16 +185,7 @@ const CoursDetail = () => {
       </div>
 
       {contentLocked && (
-        <div
-          style={{
-            background: "#fff3cd",
-            border: "1px solid #ffe69c",
-            color: "#856404",
-            padding: "12px",
-            borderRadius: "8px",
-            marginBottom: "20px"
-          }}
-        >
+        <div style={{ background: "#fff3cd", border: "1px solid #ffe69c", color: "#856404", padding: "12px", borderRadius: "8px", marginBottom: "20px" }}>
           🔒 {lockMessage}
         </div>
       )}
@@ -209,25 +204,8 @@ const CoursDetail = () => {
           const isOpen = openModules[module._id];
 
           return (
-            <div
-              key={module._id}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "16px",
-                marginBottom: "16px",
-                background: "#fff"
-              }}
-            >
-              <div
-                style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center"
-                }}
-                onClick={() => toggleModule(module._id)}
-              >
+            <div key={module._id} style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "16px", marginBottom: "16px", background: "#fff" }}>
+              <div style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }} onClick={() => toggleModule(module._id)}>
                 <div>
                   <h4 style={{ margin: 0 }}>
                     Module {index + 1}: {module.titre}
@@ -248,14 +226,7 @@ const CoursDetail = () => {
                     <p>Aucune partie dans ce module.</p>
                   ) : (
                     parties.map((partie, pIndex) => (
-                      <div
-                        key={partie._id}
-                        style={{
-                          borderTop: "1px solid #eee",
-                          paddingTop: "12px",
-                          marginTop: "12px"
-                        }}
-                      >
+                      <div key={partie._id} style={{ borderTop: "1px solid #eee", paddingTop: "12px", marginTop: "12px" }}>
                         <h5 style={{ marginBottom: "6px" }}>
                           Partie {pIndex + 1}: {partie.titre}
                         </h5>
@@ -280,14 +251,7 @@ const CoursDetail = () => {
                         ) : (
                           <>
                             {partie.contenu && (
-                              <div
-                                style={{
-                                  background: "#f8f9fa",
-                                  padding: "12px",
-                                  borderRadius: "6px",
-                                  marginTop: "8px"
-                                }}
-                              >
+                              <div style={{ background: "#f8f9fa", padding: "12px", borderRadius: "6px", marginTop: "8px" }}>
                                 {partie.contenu}
                               </div>
                             )}
@@ -315,4 +279,3 @@ const CoursDetail = () => {
 };
 
 export default CoursDetail;
-
