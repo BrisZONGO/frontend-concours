@@ -6,6 +6,7 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
+  const [telephone, setTelephone] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +27,7 @@ function Login({ onLogin }) {
         res = await api.post('/api/auth/inscription', {
           nom: nom.trim(),
           prenom: prenom.trim(),
+          telephone: telephone.trim(),
           ...payload
         });
       }
@@ -94,6 +96,17 @@ function Login({ onLogin }) {
                   type="text"
                   value={prenom}
                   onChange={(e) => setPrenom(e.target.value)}
+                  style={{ width: '100%', padding: '8px' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label>Numéro WhatsApp</label>
+                <input
+                  type="text"
+                  value={telephone}
+                  onChange={(e) => setTelephone(e.target.value)}
+                  placeholder="226XXXXXXXX"
                   style={{ width: '100%', padding: '8px' }}
                 />
               </div>
